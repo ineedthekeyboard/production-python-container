@@ -1,12 +1,18 @@
 from flask import Flask
+from logger import LogWrapper
 app = Flask(__name__)
+logging = LogWrapper("server")
+
+logging.info(f"Flask APP Started!")
 
 
 @app.route("/api/")
 @app.route("/api/test")
 def home():
-    print("called")
-
+    print("PRINT: API called")
+    logging.info("INFO - API called")
+    logging.debug("DEBUG - API called")
+    logging.error("Error - API called")
     return "Hello World!"
 
 
