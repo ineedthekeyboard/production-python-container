@@ -1,3 +1,6 @@
+# This is the base docker image for the "proper" setup of a production container that is running python and/or nginx
+# In this setup we use Nginx + Gunicorn to server our static assets and python api's respectively.
+# I have also included a dummy template to demostrate how to setup a run at boot DB script
 FROM phusion/baseimage:bionic-1.0.0
 
 # Set correct environment variables.
@@ -34,6 +37,7 @@ COPY config/startup-scripts/nginx.sh /etc/service/nginx/run
 RUN chmod +x /etc/service/nginx/run
 
 #Setup GUNICORN runscript to be run in when the container starts
+COPY config/Gunicorn.conf.py /app/webapp/gunicorn.conf.py
 RUN mkdir /etc/service/gunicorn
 COPY config/startup-scripts/gunicorn.sh /etc/service/gunicorn/run
 RUN chmod +x /etc/service/gunicorn/run
