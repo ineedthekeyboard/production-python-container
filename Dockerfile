@@ -17,9 +17,9 @@ RUN apt-get update && apt-get -y install software-properties-common && add-apt-r
 # Setup fs for app
 RUN mkdir /app && mkdir /app/webapp \
 #    && mkdir /app/logs && chmod 777 /app/logs
-    && rm -f /etc/nginx/sites-enabled/default
-#    Removing the syslog startup because it hurts "SOME" app engines (heroku/ DO appengine)
-#    && rm -f /etc/my_init.d/10_syslog-ng.init
+    && rm -f /etc/nginx/sites-enabled/default \
+#    Removing the syslog startup because it hurts "SOME" app engines that already bind to the same place.(heroku/ DO appengine)
+    && rm -f /etc/my_init.d/10_syslog-ng.init
 
 #Nginx configs
 ADD config/nginx.conf /etc/nginx/nginx.conf
