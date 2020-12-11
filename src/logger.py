@@ -19,21 +19,21 @@ class LogWrapper:
         fh.setLevel(logging.DEBUG)
 
         # create console handler with a higher log level
-        ch = logging.StreamHandler(stream=sys.stdout)
+        # ch = logging.StreamHandler(stream=sys.stdout)
 
-        if DEBUG:
-            ch.setLevel(logging.DEBUG)
-        else:
-            ch.setLevel(logging.INFO)
+        # if DEBUG:
+        #     ch.setLevel(logging.DEBUG)
+        # else:
+        #     ch.setLevel(logging.INFO)
 
         # create formatter and add it to the handlers
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
-        ch.setFormatter(formatter)
+        # ch.setFormatter(formatter)
 
         # add the handlers to the logger
         self.logger.addHandler(fh)
-        self.logger.addHandler(ch)
+        # self.logger.addHandler(ch)
         self.name = name
 
     def debug(self, msg):

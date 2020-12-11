@@ -1,5 +1,5 @@
 # This is the base docker image for the "proper" setup of a production container that is running python and/or nginx
-# In this setup we use Nginx + Gunicorn to server our static assets and python api's respectively.
+# In this setup we use Nginx + Passenger(standalone) to server our static assets and python api's respectively.
 # I have also included a dummy template to demostrate how to setup a run at boot DB script
 FROM phusion/baseimage:bionic-1.0.0
 
@@ -17,12 +17,25 @@ RUN apt-get update && apt-get -y install software-properties-common && add-apt-r
     # Clean up APT when done.
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Install passenger
+RUN apt-get install -y dirmngr gnupg && \
+    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 561F9B9CAC40B2F7 && \
+    apt-get install -y apt-transport-https ca-certificates && \
+    # Add our APT repository
+    sh -c 'echo deb https://oss-binaries.phusionpassenger.com/apt/passenger bionic main > /etc/apt/sources.list.d/passenger.list' && \
+    apt-get update && \
+    # Install Passenger
+    apt-get install -y passenger && \
+    /usr/bin/passenger-config validate-install && \
+    adduser app
+
 # Setup fs for app
-RUN mkdir /app && mkdir /app/webapp \
-#    && mkdir /app/logs && chmod 777 /app/logs
-    && rm -f /etc/nginx/sites-enabled/default \
+RUN mkdir /app && mkdir /app/webapp && \
+    chown app: /app/webapp && \
+#   mkdir /app/logs && chmod 777 /app/logs && \
+    rm -f /etc/nginx/sites-enabled/default && \
 #    Removing the syslog startup because it hurts "SOME" app engines that already bind to the same place.(heroku/ DO appengine)
-    && rm -f /etc/my_init.d/10_syslog-ng.init
+    rm -f /etc/my_init.d/10_syslog-ng.init
 
 #Nginx configs
 ADD config/nginx.conf /etc/nginx/nginx.conf
@@ -36,13 +49,14 @@ RUN mkdir /etc/service/nginx
 COPY config/startup-scripts/nginx.sh /etc/service/nginx/run
 RUN chmod +x /etc/service/nginx/run
 
-#Setup GUNICORN runscript to be run in when the container starts
-COPY config/Gunicorn.conf.py /app/webapp/gunicorn.conf.py
-RUN mkdir /etc/service/gunicorn
-COPY config/startup-scripts/gunicorn.sh /etc/service/gunicorn/run
-RUN chmod +x /etc/service/gunicorn/run
+#Setup Passenger runscript to be run in when the container starts
+COPY config/Passengerfile.json /app/webapp/Passengerfile.json
+COPY config/passenger_wsgi.py /app/webapp/passenger_wsgi.py
+RUN mkdir /etc/service/passenger
+COPY config/startup-scripts/passenger.sh /etc/service/passenger/run
+RUN chmod +x /etc/service/passenger/run
 
-#Setup startup db updater to not run in the background but only run once when the container is started.
+#Setup startup db updater to NOT run in the background but only run once when the container is started.
 RUN mkdir -p /etc/my_init.d
 COPY config/startup-scripts/db_updater_fake.sh /etc/my_init.d/db_updater_fake.sh
 RUN chmod +x /etc/my_init.d/db_updater_fake.sh

@@ -1,0 +1,13 @@
+{
+  "app_type": "wsgi",
+  "startup_file": "passenger_wsgi.py",
+  "python": "python3.8",
+  "environment": "production",
+  "log_file": "/app/webapp/passenger.log",
+  "port": 8080,
+  "daemonize": false,
+  "user": "app",
+  "max_pool_size": 6,
+  "min_instances": 2,
+  "spawn_method": "direct"
+}
