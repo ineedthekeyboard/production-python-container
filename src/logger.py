@@ -3,7 +3,11 @@ import logging.handlers
 import sys
 import os
 LOGGER_NAME = 'api-logger'
-DEBUG = os.getenv("ENVIRONMENT") == "development" or os.getenv("ENVIRONMENT") == "local" or os.getenv("ENVIRONMENT") == None
+DEBUG = \
+    os.getenv("ENVIRONMENT") == "development" \
+    or os.getenv("ENVIRONMENT") == "local" \
+    or os.getenv("ENVIRONMENT") is None \
+    or os.getenv("DEBUG_LOGS") == "true"
 
 
 class LogWrapper:
