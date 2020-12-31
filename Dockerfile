@@ -10,44 +10,31 @@ ENV HOME /root
 CMD ["/sbin/my_init"]
 #CMD ["/sbin/my_init", "--skip-startup-files"]
 
-#Install system libs (python, nginx)
-RUN apt-get update && apt-get -y install software-properties-common && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update && apt-get -y install python3.8 python3-pip nginx \
-    && python3.8 -m pip install --upgrade pip && python3.8 --version \
-    # Clean up APT when done.
+#Copy configs
+RUN mkdir /loki /promtail
+COPY config/loki-config.yaml /loki/loki-config.yaml
+COPY config/promtail-config.yaml /promtail/promtail-config.yaml
+
+#Install loki & promtail
+RUN apt-get update && apt-get -y install unzip \
+
+    && cd /loki && curl -O -L "https://github.com/grafana/loki/releases/download/v2.0.0/loki-linux-amd64.zip" \
+    && unzip "loki-linux-amd64.zip" \
+    && chmod a+x "loki-linux-amd64" && rm -rf "loki-linux-amd64.zip" \
+
+    && cd /promtail && curl -O -L "https://github.com/grafana/loki/releases/download/v2.0.0/promtail-linux-amd64.zip" \
+    && unzip "promtail-linux-amd64.zip" \
+    && chmod a+x "promtail-linux-amd64" && rm -rf "promtail-linux-amd64.zip" \
+
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Setup fs for app
-RUN mkdir /app && mkdir /app/webapp \
-#    && mkdir /app/logs && chmod 777 /app/logs
-    && rm -f /etc/nginx/sites-enabled/default \
-#    Removing the syslog startup because it hurts "SOME" app engines that already bind to the same place.(heroku/ DO appengine)
-    && rm -f /etc/my_init.d/10_syslog-ng.init
+#Loki startup service
+RUN mkdir /etc/service/loki
+COPY config/startup-scripts/loki.sh /etc/service/loki/run
+RUN chmod +x /etc/service/loki/run
 
-#Nginx configs
-ADD config/nginx.conf /etc/nginx/nginx.conf
-ADD config/webapp.conf /etc/nginx/sites-enabled/webapp.conf
+#Promtail startup service
+RUN mkdir /etc/service/promtail
+COPY config/startup-scripts/promtail.sh /etc/service/promtail/run
+RUN chmod +x /etc/service/promtail/run
 
-#Copy static site files
-COPY ./static /opt/dashboard
-
-#Setup NGINX runscript to be run in when the container starts
-RUN mkdir /etc/service/nginx
-COPY config/startup-scripts/nginx.sh /etc/service/nginx/run
-RUN chmod +x /etc/service/nginx/run
-
-#Setup GUNICORN runscript to be run in when the container starts
-COPY config/Gunicorn.conf.py /app/webapp/gunicorn.conf.py
-RUN mkdir /etc/service/gunicorn
-COPY config/startup-scripts/gunicorn.sh /etc/service/gunicorn/run
-RUN chmod +x /etc/service/gunicorn/run
-
-#Setup startup db updater to not run in the background but only run once when the container is started.
-RUN mkdir -p /etc/my_init.d
-COPY config/startup-scripts/db_updater_fake.sh /etc/my_init.d/db_updater_fake.sh
-RUN chmod +x /etc/my_init.d/db_updater_fake.sh
-
-#Setup Python API server
-ADD ./requirements.txt /app/webapp/requirements.txt
-RUN python3.8 -m pip install -r /app/webapp/requirements.txt
-COPY ./src /app/webapp
