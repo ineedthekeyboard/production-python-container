@@ -1,0 +1,64 @@
+version: '3.2'
+
+services:
+  loki:
+    image: grafana/loki:1.5.0
+    ports:
+      - "3100:3100"
+    networks:
+      - loki-net
+    volumes:
+      - loki-data:/loki
+
+  grafana:
+    image: grafana/grafana:7.0.1
+    ports:
+      - "3000:3000"
+    networks:
+      - loki-net
+    volumes:
+      - grafana-data:/var/lib/grafana
+    deploy:
+      labels:
+        - logging.labels=stripped
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://127.0.0.1:3100/loki/api/v1/push"
+        loki-retries: "5"
+        loki-batch-size: "400"
+        loki-pipeline-stages: |
+          - json:
+              expressions:
+                level: level
+                path: path
+                method: method
+                msg: msg
+          - labels:
+              msg:
+              level:
+              path:
+              method:
+
+networks:
+  loki-net:
+    external: true
+
+# This is needed in other stacks! to see the loki net working
+#networks:
+#  loki-overlay:
+#    external:
+#      name: loki-overlay
+# Dont forget these networks are created swarm wide outside this file:
+# docker network create logging-overlay --scope swarm --driver overlay
+# Currently loki would only work on this networking IF you are using an internal loki pusher (ie python basedone) the ones
+# on the docker container do NOT suppport to logging to loki through the overlay network types. IE LOKI needs to be run on a separate machine.
+# I am leaving this overlay network in place for db type cross swarm communications
+#
+# default grafana pwd is admin/admin
+
+volumes:
+  loki-data:
+    external: true
+  grafana-data:
+    external: true
