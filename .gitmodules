@@ -1,0 +1,6 @@
+[submodule "swarm_stacks/traefik"]
+	path = swarm_stacks/traefik
+	url = https://github.com/ineedthekeyboard/traefik
+[submodule "swarm_stacks/monitor"]
+	path = swarm_stacks/monitor
+	url = https://github.com/ineedthekeyboard/monitoring-cpang

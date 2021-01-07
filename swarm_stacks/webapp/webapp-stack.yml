@@ -1,0 +1,23 @@
+version: '3.4'
+
+services:
+  webapp:
+    build:
+      context: ../../.
+    networks:
+      - public
+    deploy:
+      mode: replicated
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=public"
+        - "traefik.backend=webapp"
+        - "traefik.port=8000"
+        - "traefik.frontend.rule=Host:webapp.${DOMAIN}"
+        - "traefik.frontend.headers.SSLRedirect=true"
+        - "traefik.frontend.entryPoints=http,https"
+
+networks:
+  public:
+    external: true
