@@ -1,0 +1,53 @@
+version: '3.5'
+
+services:
+  traefik:
+    # The official v2 Traefik docker image
+    image: traefik:v2.4
+    # Enables the web UI and tells Traefik to listen to docker
+    command: >
+      --api.insecure=true
+      --providers.docker.swarmMode=true
+      --providers.docker.network=public
+    ports:
+      # The HTTP port
+      - "80:80"
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+    networks:
+      - public
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.http.services.traefik.loadbalancer.server.port=8080
+        - traefik.docker.network=public
+
+networks:
+  public:
+    name: public
+    external: true
+#
+#  nginx:
+#    image: nginx
+#    deploy:
+#      replicas: 2
+#      placement:
+#        constraints:
+#          - node.role==worker
+#      labels:
+#        - traefik.enable=true
+#        - traefik.http.routers.nginx.rule=PathPrefix(`/`)
+#        - traefik.http.services.nginx.loadbalancer.server.port=80
