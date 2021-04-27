@@ -1,3 +1,7 @@
 .pyenv
 .idea
 *.log
+monitor/graf/data/alertmanager/*
+monitor/graf/data/grafana/*
+monitor/graf/data/loki/*
+monitor/graf/data/prometheus/*
