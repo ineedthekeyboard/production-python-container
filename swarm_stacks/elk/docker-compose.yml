@@ -1,0 +1,45 @@
+# TODO make containers use less memory?
+version: '3'
+
+services:
+    esserver:
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.12.0
+        ports:
+            - "9200:9200"
+        environment:
+            discovery.type: single-node
+    kibana:
+        image: docker.elastic.co/kibana/kibana:7.12.0
+        ports:
+            - "5601:5601"
+        environment:
+            SERVER_NAME: kibana
+            ELASTICSEARCH_HOSTS: http://esserver:9200
+        depends_on: 
+            - esserver
+            - logstash
+    logstash:
+        image: docker.elastic.co/logstash/logstash:7.12.0
+        volumes:
+            - ./logstash/pipeline:/usr/share/logstash/pipeline
+            - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+        ports:
+            - "12201:12201/udp"
+            - "5050:5050"
+        depends_on:
+            - esserver
+    filebeat:
+        image: bargenson/filebeat
+        restart: unless-stopped
+        volumes:
+            - /var/run/docker.sock:/tmp/docker.sock
+        environment:
+            - LOGSTASH_HOST=logstash
+            - LOGSTASH_PORT=5050
+            - SHIPPER_NAME=MonitorStack
+        depends_on:
+            - esserver
+            - logstash
+networks:
+    elk:
+        name: elk
