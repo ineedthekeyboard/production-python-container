@@ -1,0 +1,144 @@
+version: '3.5'
+
+## this is a YAML anchor to avoid repetition
+#x-logging: &logging
+#  logging:
+#    driver: loki
+#    options: # note: the ip is the ip we will assign later to loki in this file
+#      loki-url: "http://10.5.0.2:3100/loki/api/v1/push"
+
+services:
+
+  prometheus:
+      image: prom/prometheus:v2.9.2
+      container_name: prometheus
+      restart: unless-stopped
+      volumes:
+        - ./config/prometheus.yaml:/etc/prometheus/prometheus.yaml
+        - ./data/prometheus:/prometheus
+      command:
+        - '--config.file=/etc/prometheus/prometheus.yaml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--web.console.libraries=/etc/prometheus/console_libraries'
+        - '--web.console.templates=/etc/prometheus/consoles'
+#        - '-alertmanager.url=http://alertmanager:9093'
+      depends_on:
+        - loki
+      networks:
+        - logging
+      ports:
+        - 9090:9090
+      expose:
+        - 9090
+      logging:
+        driver: loki
+        options:
+          loki-url: "http://10.5.0.2:3100/loki/api/v1/push"
+          loki-external-labels: job=prometheus,environment=development
+
+  loki:
+    image: grafana/loki:2.0.0
+    networks:
+      logging:
+      vpcbr:
+        ipv4_address: 10.5.0.2
+    ports:
+      - "3100:3100"
+    expose:
+      - "3100"
+    volumes:
+      - ./config/loki.yaml:/etc/loki/local-config.yaml
+      - ./data/loki:/loki
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: monitoring_node_exporter
+    restart: unless-stopped
+    networks:
+      - logging
+    expose:
+      - 9100
+
+  cadvisor:
+    image: google/cadvisor:latest
+    container_name: monitoring_cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - logging
+    expose:
+      - 8080
+
+  alertmanager:
+    image: prom/alertmanager:v0.20.0
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    volumes:
+      - ./config/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml
+      - ./data/alertmanager:/alertmanager
+    networks:
+      - logging
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - loki
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+    deploy:
+      labels:
+        - logging.labels=stripped
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://10.5.0.2:3100/loki/api/v1/push"
+        loki-external-labels: job=grafana,environment=development
+        loki-retries: "5"
+        loki-batch-size: "400"
+        loki-pipeline-stages: |
+          - json:
+              expressions:
+                level: level
+                path: path
+                method: method
+                msg: msg
+          - labels:
+              msg:
+              level:
+              path:
+              method:
+    networks:
+      - logging
+    expose:
+      - 3000
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_DOMAIN=localhost
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - PROMETHEUS_ENDPOINT=http://prometheus:9090
+#      - GF_SMTP_ENABLED=true
+#      - GF_SMTP_HOST=smtp.gmail.com:587
+#      - GF_SMTP_USER=myadrress@gmail.com
+#      - GF_SMTP_PASSWORD=mypassword
+#      - GF_SMTP_FROM_ADDRESS=myaddress@gmail.com
+
+
+networks:
+  logging:
+  vpcbr: # virtual network name
+    driver: bridge
+    ipam:
+      config: # here, we define our ip space
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1
